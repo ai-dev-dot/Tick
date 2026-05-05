@@ -8,7 +8,17 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(export http_proxy=http://127.0.0.1:7890)",
-      "Bash(export https_proxy=http://127.0.0.1:7890)"
+      "Bash(export https_proxy=http://127.0.0.1:7890)",
+      "Bash(git checkout *)",
+      "Bash(npx create-expo-app@latest . --template blank-typescript)",
+      "Bash(cd /tmp)",
+      "Bash(npx create-expo-app@latest tick-scaffold --template blank-typescript)",
+      "Read(//tmp/**)",
+      "Read(//c/Users/Think/**)",
+      "Bash(find /tmp -name \"tick-scaffold\" -type d)",
+      "Bash(cp app.json App.tsx index.ts tsconfig.json package.json package-lock.json D:/APP/tick/)",
+      "Bash(cp -r assets D:/APP/tick/)",
+      "Bash(npm install *)"
     ]
   }
 }
