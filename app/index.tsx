@@ -7,18 +7,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-// ─── Tokens ───
-const T = {
-  primary: '#FF6B35',
-  primarySoft: '#FFF0E8',
-  completed: '#8E8E93',
-  completedBg: '#F2F2F7',
-  surface: '#FBFBF9',
+// ─── Colors ───
+const C = {
+  bg: '#FAFAF8',
   card: '#FFFFFF',
-  textPrimary: '#1C1C1E',
-  textSecondary: '#8E8E93',
-  textTertiary: '#C7C7CC',
-  separator: '#F0F0ED',
+  primary: '#FF6B35',
+  text: '#1C1C1E',
+  sub: '#8E8E93',
+  faint: '#C7C7CC',
+  line: '#F0EFEC',
+  // Category colors
+  life: '#FF6B35',
+  lifeBg: '#FFF2EC',
+  work: '#3B82F6',
+  workBg: '#EFF4FF',
+  health: '#22C55E',
+  healthBg: '#ECFDF3',
 };
 
 type FilterTab = '全部' | '日常' | '近期';
@@ -35,22 +39,16 @@ interface Task {
 }
 
 const TODAY_DATE = '2026年5月5日';
-const TODAY_WEEKDAY = '星期一';
-const IS_WEEKDAY = !['六', '日'].includes(TODAY_WEEKDAY.slice(-1));
+const WEEKDAY = '星期一';
+const IS_WEEKDAY = !['六', '日'].includes(WEEKDAY.slice(-1));
 
-const CAT_ICON: Record<Category, keyof typeof Ionicons.glyphMap> = {
-  '生活': 'home-outline',
-  '工作': 'briefcase-outline',
-  '健康': 'heart-outline',
+const CAT: Record<Category, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
+  '生活': { icon: 'home', color: C.life, bg: C.lifeBg },
+  '工作': { icon: 'briefcase', color: C.work, bg: C.workBg },
+  '健康': { icon: 'heart', color: C.health, bg: C.healthBg },
 };
 
-const CAT_COLOR: Record<Category, string> = {
-  '生活': T.primary,
-  '工作': '#007AFF',
-  '健康': '#34C759',
-};
-
-const MOCK_TASKS: Task[] = [
+const MOCK: Task[] = [
   { id: '1', content: '喂小乌龟', category: '生活', deadlineType: '日常', dailyOption: '每天', completed: false, reminderTime: '22:00' },
   { id: '2', content: '晨跑 30 分钟', category: '健康', deadlineType: '日常', dailyOption: '每工作日', completed: true, reminderTime: '07:00' },
   { id: '3', content: '帮娃完成游戏日常', category: '生活', deadlineType: '日常', dailyOption: '每天', completed: true, reminderTime: null },
@@ -60,17 +58,17 @@ const MOCK_TASKS: Task[] = [
   { id: '7', content: '整理书架和旧杂志', category: '生活', deadlineType: '长期', dailyOption: null, completed: true, reminderTime: null },
 ];
 
-function sortByStatus(list: Task[]): Task[] {
+function byStatus(list: Task[]): Task[] {
   return [...list].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 }
 
 // ─── Home ───
 export default function HomePage() {
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
+  const [tasks, setTasks] = useState<Task[]>(MOCK);
   const [tab, setTab] = useState<FilterTab>('全部');
-  const [longExpanded, setLongExpanded] = useState(false);
+  const [longOpen, setLongOpen] = useState(false);
 
-  const filtered = tasks.filter(t => {
+  const visible = tasks.filter(t => {
     if (t.deadlineType === '日常' && t.dailyOption === '每工作日' && !IS_WEEKDAY) return false;
     if (tab === '全部') return true;
     if (tab === '日常') return t.deadlineType === '日常';
@@ -78,9 +76,9 @@ export default function HomePage() {
     return true;
   });
 
-  const daily = filtered.filter(t => t.deadlineType === '日常');
-  const recent = filtered.filter(t => t.deadlineType === '近期');
-  const longTerm = filtered.filter(t => t.deadlineType === '长期');
+  const daily = visible.filter(t => t.deadlineType === '日常');
+  const recent = visible.filter(t => t.deadlineType === '近期');
+  const long = visible.filter(t => t.deadlineType === '长期');
   const total = daily.length + recent.length;
   const done = daily.filter(t => t.completed).length + recent.filter(t => t.completed).length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -90,22 +88,23 @@ export default function HomePage() {
   }, []);
 
   const longPress = useCallback((task: Task) => {
-    Alert.alert(task.content, '快速编辑', [
+    const actions = [
       { text: '编辑分类', onPress: () => Alert.alert('选择分类', '', [
         { text: '生活', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, category: '生活' } : t)) },
         { text: '工作', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, category: '工作' } : t)) },
         { text: '健康', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, category: '健康' } : t)) },
-        { text: '取消', style: 'cancel' },
+        { text: '取消', style: 'cancel' as const },
       ])},
       { text: '编辑期限', onPress: () => Alert.alert('选择期限', '', [
         { text: '日常 · 每天', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, deadlineType: '日常', dailyOption: '每天' } : t)) },
         { text: '日常 · 每工作日', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, deadlineType: '日常', dailyOption: '每工作日' } : t)) },
         { text: '近期任务', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, deadlineType: '近期', dailyOption: null } : t)) },
         { text: '长期规划', onPress: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, deadlineType: '长期', dailyOption: null } : t)) },
-        { text: '取消', style: 'cancel' },
+        { text: '取消', style: 'cancel' as const },
       ])},
-      { text: '取消', style: 'cancel' },
-    ]);
+      { text: '取消', style: 'cancel' as const },
+    ];
+    Alert.alert(task.content, '快速编辑', actions);
   }, []);
 
   const del = useCallback((task: Task) => {
@@ -116,101 +115,101 @@ export default function HomePage() {
   }, []);
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <View style={s.root}>
-        {/* Header */}
-        <View style={s.header}>
+    <SafeAreaView style={ss.safe} edges={['top']}>
+      <View style={ss.root}>
+        {/* ── Header ── */}
+        <View style={ss.head}>
           <View>
-            <Text style={s.weekday}>{TODAY_WEEKDAY}</Text>
-            <Text style={s.date}>{TODAY_DATE}</Text>
+            <Text style={ss.wkday}>{WEEKDAY}</Text>
+            <Text style={ss.date}>{TODAY_DATE}</Text>
           </View>
-          <TouchableOpacity style={s.ringBtn} onPress={() => router.push('/stats')} activeOpacity={0.6}>
-            <View style={s.ring}>
-              <Text style={s.ringPct}>{pct}%</Text>
+          <TouchableOpacity onPress={() => router.push('/stats')} activeOpacity={0.7} style={ss.pctWrap}>
+            <View style={ss.pctRing}>
+              <Text style={ss.pctNum}>{pct}%</Text>
             </View>
-            <Text style={s.ringLabel}>{done}/{total} 完成</Text>
+            <Text style={ss.pctSub}>{done}/{total}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Tabs */}
-        <View style={s.tabs}>
+        {/* ── Tabs ── */}
+        <View style={ss.tabs}>
           {(['全部', '日常', '近期'] as FilterTab[]).map(t => (
-            <Pressable key={t} style={s.tab} onPress={() => setTab(t)}>
-              <Text style={[s.tabText, t === tab && s.tabActive]}>{t}</Text>
-              {t === tab && <View style={s.tabDot} />}
+            <Pressable key={t} style={ss.tab} onPress={() => setTab(t)}>
+              <Text style={[ss.tabTxt, t === tab && ss.tabOn]}>{t}</Text>
+              {t === tab && <View style={ss.tabDot} />}
             </Pressable>
           ))}
         </View>
 
-        {/* List */}
-        <ScrollView style={s.list} contentContainerStyle={[s.listInner, filtered.length === 0 && s.listEmpty]} showsVerticalScrollIndicator={false}>
+        {/* ── List ── */}
+        <ScrollView style={ss.scroll} contentContainerStyle={[ss.scrollIn, visible.length === 0 && ss.scrollEmpty]} showsVerticalScrollIndicator={false}>
           {daily.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHead}>
-                <Ionicons name="pin" size={14} color={T.textSecondary} />
-                <Text style={s.sectionTitle}> 日常任务</Text>
+            <View style={ss.block}>
+              <View style={ss.blockHead}>
+                <Ionicons name="pin" size={13} color={C.sub} />
+                <Text style={ss.blockTitle}> 日常任务</Text>
               </View>
-              <View style={s.card}>
-                {sortByStatus(daily).map((task, i) => (
-                  <TaskRow key={task.id} task={task} onToggle={toggle} onLongPress={longPress} onDelete={del} last={i === daily.length - 1} />
+              <View style={ss.card}>
+                {byStatus(daily).map((t, i) => (
+                  <TaskRow key={t.id} task={t} onToggle={toggle} onLongPress={longPress} onDelete={del} last={i === daily.length - 1} />
                 ))}
               </View>
             </View>
           )}
 
           {recent.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHead}>
-                <Ionicons name="list-outline" size={14} color={T.textSecondary} />
-                <Text style={s.sectionTitle}> 近期任务</Text>
+            <View style={ss.block}>
+              <View style={ss.blockHead}>
+                <Ionicons name="list" size={13} color={C.sub} />
+                <Text style={ss.blockTitle}> 近期任务</Text>
               </View>
-              <View style={s.card}>
-                {sortByStatus(recent).map((task, i) => (
-                  <TaskRow key={task.id} task={task} onToggle={toggle} onLongPress={longPress} onDelete={del} last={i === recent.length - 1} />
+              <View style={ss.card}>
+                {byStatus(recent).map((t, i) => (
+                  <TaskRow key={t.id} task={t} onToggle={toggle} onLongPress={longPress} onDelete={del} last={i === recent.length - 1} />
                 ))}
               </View>
             </View>
           )}
 
-          {longTerm.length > 0 && tab === '全部' && (
-            <View style={s.section}>
-              <Pressable style={s.sectionHead} onPress={() => setLongExpanded(!longExpanded)}>
-                <Ionicons name="archive-outline" size={14} color={T.textSecondary} />
-                <Text style={s.sectionTitle}> 长期规划</Text>
-                <View style={s.longBadge}>
-                  <Text style={s.longBadgeText}>{longTerm.filter(t => t.completed).length}/{longTerm.length}</Text>
+          {long.length > 0 && tab === '全部' && (
+            <View style={ss.block}>
+              <Pressable style={ss.blockHead} onPress={() => setLongOpen(!longOpen)}>
+                <Ionicons name="archive" size={13} color={C.sub} />
+                <Text style={ss.blockTitle}> 长期规划</Text>
+                <View style={ss.badge}>
+                  <Text style={ss.badgeText}>{long.filter(t => t.completed).length}/{long.length}</Text>
                 </View>
-                <Ionicons name={longExpanded ? 'chevron-down' : 'chevron-forward'} size={14} color={T.textTertiary} />
+                <Ionicons name={longOpen ? 'chevron-down' : 'chevron-forward'} size={12} color={C.faint} />
               </Pressable>
-              {longExpanded && (
-                <View style={s.card}>
-                  {sortByStatus(longTerm).map((task, i) => (
-                    <TaskRow key={task.id} task={task} onToggle={toggle} onLongPress={longPress} onDelete={del} last={i === longTerm.length - 1} />
+              {longOpen && (
+                <View style={ss.card}>
+                  {byStatus(long).map((t, i) => (
+                    <TaskRow key={t.id} task={t} onToggle={toggle} onLongPress={longPress} onDelete={del} last={i === long.length - 1} />
                   ))}
                 </View>
               )}
             </View>
           )}
 
-          {filtered.length === 0 && (
-            <View style={s.empty}>
-              <Ionicons name="sunny-outline" size={48} color={T.primary} />
-              <Text style={s.emptyTitle}>今天还没有任务</Text>
-              <Text style={s.emptyBody}>点击下方 + 号，用一句话创建</Text>
-              <View style={s.emptyHints}>
-                <Text style={s.emptyHint}>「每天早上 8 点跑步」</Text>
-                <Text style={s.emptyHint}>「周末前完成报告」</Text>
-                <Text style={s.emptyHint}>「学习一门新技能」</Text>
+          {visible.length === 0 && (
+            <View style={ss.empty}>
+              <Ionicons name="sunny" size={52} color={C.primary} />
+              <Text style={ss.emptyTitle}>今天还没有任务</Text>
+              <Text style={ss.emptySub}>点击 + 号，用一句话创建</Text>
+              <View style={ss.emptyHints}>
+                {['每天早上 8 点跑步','周末前完成报告','学习一门新技能'].map(h => (
+                  <Text key={h} style={ss.emptyHint}>「{h}」</Text>
+                ))}
               </View>
             </View>
           )}
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: 96 }} />
         </ScrollView>
 
-        {/* FAB */}
-        <TouchableOpacity style={s.fab} activeOpacity={0.85} onPress={() => Alert.alert('添加任务', '输入你想做的事（Demo）')}>
-          <Ionicons name="add" size={32} color="#FFF" />
+        {/* ── FAB ── */}
+        <TouchableOpacity style={ss.fab} activeOpacity={0.88} onPress={() => Alert.alert('添加任务', '输入你想做的事（Demo）')}>
+          <Ionicons name="add" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -219,109 +218,126 @@ export default function HomePage() {
 
 // ─── Task Row ───
 function TaskRow({ task, onToggle, onLongPress, onDelete, last }: {
-  task: Task;
-  onToggle: (id: string) => void;
-  onLongPress: (task: Task) => void;
-  onDelete: (task: Task) => void;
-  last: boolean;
+  task: Task; onToggle: (id: string) => void; onLongPress: (task: Task) => void; onDelete: (task: Task) => void; last: boolean;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const anim = useRef(new Animated.Value(1)).current;
+  const cat = CAT[task.category];
 
-  const press = () => {
+  const tap = () => {
     Animated.sequence([
-      Animated.timing(scale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, friction: 3, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0.82, duration: 80, useNativeDriver: true }),
+      Animated.spring(anim, { toValue: 1, friction: 3, useNativeDriver: true }),
     ]).start();
     onToggle(task.id);
   };
 
   return (
-    <Pressable style={[s.row, !last && s.rowBorder]} onPress={press} onLongPress={() => onLongPress(task)} delayLongPress={500}>
-      <Animated.View style={[s.circle, task.completed && s.circleDone, { transform: [{ scale }] }]}>
+    <Pressable style={[ss.row, !last && ss.rowLine]} onPress={tap} onLongPress={() => onLongPress(task)} delayLongPress={500}>
+      {/* Circle */}
+      <Animated.View style={[ss.circle, task.completed && ss.circleDone, { transform: [{ scale: anim }] }]}>
         {task.completed && <Ionicons name="checkmark" size={16} color="#FFF" />}
       </Animated.View>
 
-      <View style={s.body}>
-        <Text style={[s.bodyText, task.completed && s.bodyTextDone]} numberOfLines={2}>{task.content}</Text>
-        <View style={s.meta}>
-          <View style={[s.chip, { borderColor: CAT_COLOR[task.category] }]}>
-            <Ionicons name={CAT_ICON[task.category]} size={12} color={CAT_COLOR[task.category]} />
-            <Text style={[s.chipText, { color: CAT_COLOR[task.category] }]}> {task.category}</Text>
+      {/* Content */}
+      <View style={ss.body}>
+        <Text style={[ss.bodyText, task.completed && ss.bodyDone]} numberOfLines={2}>{task.content}</Text>
+        <View style={ss.meta}>
+          {/* Category chip — color coded */}
+          <View style={[ss.chip, { backgroundColor: cat.bg }]}>
+            <Ionicons name={cat.icon} size={13} color={cat.color} />
+            <Text style={[ss.chipTxt, { color: cat.color }]}>  {task.category}</Text>
           </View>
+
           {task.reminderTime && (
-            <View style={s.metaItem}>
-              <Ionicons name="time-outline" size={12} color={T.textTertiary} />
-              <Text style={s.metaText}> {task.reminderTime}</Text>
+            <View style={ss.metaRow}>
+              <Ionicons name="time" size={13} color={C.sub} />
+              <Text style={ss.metaTxt}>  {task.reminderTime}</Text>
             </View>
           )}
+
           {task.deadlineType === '日常' && task.dailyOption && (
-            <View style={s.badge}>
-              <Ionicons name="refresh-outline" size={11} color={T.primary} />
-              <Text style={s.badgeText}> {task.dailyOption === '每工作日' ? '工作日' : '每天'}</Text>
+            <View style={ss.repeat}>
+              <Ionicons name="repeat" size={12} color={C.primary} />
+              <Text style={ss.repeatTxt}>  {task.dailyOption === '每工作日' ? '工作日' : '每天'}</Text>
             </View>
           )}
         </View>
       </View>
 
-      <TouchableOpacity style={s.del} onPress={() => onDelete(task)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name="close-outline" size={20} color={T.textTertiary} />
+      {/* Delete */}
+      <TouchableOpacity style={ss.delBtn} onPress={() => onDelete(task)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+        <Ionicons name="close-circle" size={22} color={C.line} />
       </TouchableOpacity>
     </Pressable>
   );
 }
 
 // ─── Styles ───
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.surface },
+const ss = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
   root: { flex: 1 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
-  weekday: { fontSize: 13, color: T.textTertiary, fontWeight: '500', letterSpacing: 1, marginBottom: 2 },
-  date: { fontSize: 28, fontWeight: '700', color: T.textPrimary, letterSpacing: -0.5 },
-  ringBtn: { alignItems: 'flex-end' },
-  ring: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: T.primary, justifyContent: 'center', alignItems: 'center' },
-  ringPct: { fontSize: 13, fontWeight: '700', color: T.primary },
-  ringLabel: { fontSize: 11, color: T.textSecondary, marginTop: 3 },
+  // Header
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12 },
+  wkday: { fontSize: 13, color: C.faint, fontWeight: '500', letterSpacing: 1, marginBottom: 2 },
+  date: { fontSize: 30, fontWeight: '700', color: C.text, letterSpacing: -0.5 },
+  pctWrap: { alignItems: 'flex-end', paddingTop: 4 },
+  pctRing: { width: 50, height: 50, borderRadius: 25, borderWidth: 3, borderColor: C.primary, justifyContent: 'center', alignItems: 'center' },
+  pctNum: { fontSize: 14, fontWeight: '800', color: C.primary },
+  pctSub: { fontSize: 10, color: C.sub, marginTop: 3, fontWeight: '600' },
 
-  tabs: { flexDirection: 'row', paddingHorizontal: 24, marginTop: 8, marginBottom: 4 },
-  tab: { marginRight: 28, paddingBottom: 6, position: 'relative' },
-  tabText: { fontSize: 16, color: T.textTertiary, fontWeight: '500' },
-  tabActive: { color: T.primary, fontWeight: '600' },
-  tabDot: { position: 'absolute', bottom: 0, left: '50%', marginLeft: -3, width: 6, height: 6, borderRadius: 3, backgroundColor: T.primary },
+  // Tabs
+  tabs: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 8 },
+  tab: { marginRight: 32, paddingBottom: 8, position: 'relative' },
+  tabTxt: { fontSize: 16, color: C.faint, fontWeight: '500' },
+  tabOn: { color: C.text, fontWeight: '700' },
+  tabDot: { position: 'absolute', bottom: 0, left: '50%', marginLeft: -4, width: 8, height: 3, borderRadius: 2, backgroundColor: C.primary },
 
-  list: { flex: 1 },
-  listInner: { paddingTop: 12, paddingHorizontal: 20 },
-  listEmpty: { flex: 1, justifyContent: 'center' },
+  // Scroll
+  scroll: { flex: 1 },
+  scrollIn: { paddingHorizontal: 20, paddingTop: 8 },
+  scrollEmpty: { flex: 1, justifyContent: 'center' },
 
-  section: { marginBottom: 20 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: 4 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: T.textSecondary, letterSpacing: 0.5 },
-  card: { backgroundColor: T.card, borderRadius: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  // Section
+  block: { marginBottom: 22 },
+  blockHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, marginLeft: 2 },
+  blockTitle: { fontSize: 13, fontWeight: '700', color: C.sub, letterSpacing: 0.4, textTransform: 'uppercase' },
+  card: { backgroundColor: C.card, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
 
-  longBadge: { backgroundColor: T.completedBg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, marginLeft: 6 },
-  longBadgeText: { fontSize: 11, color: T.textSecondary, fontWeight: '600' },
+  badge: { backgroundColor: '#F2F2F7', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, marginLeft: 8, marginRight: 6 },
+  badgeText: { fontSize: 11, fontWeight: '700', color: C.sub },
 
-  row: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 14 },
-  rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: T.separator },
-  circle: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: T.primary, justifyContent: 'center', alignItems: 'center', marginRight: 14, marginTop: 1 },
-  circleDone: { borderColor: T.completed, backgroundColor: T.completed },
-  body: { flex: 1 },
-  bodyText: { fontSize: 16, lineHeight: 22, color: T.textPrimary, fontWeight: '500' },
-  bodyTextDone: { color: T.completed, textDecorationLine: 'line-through' },
-  meta: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.primarySoft, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4, borderWidth: 0 },
-  chipText: { fontSize: 12, fontWeight: '600' },
-  metaItem: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { fontSize: 12, color: T.textTertiary },
-  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.primarySoft, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 },
-  badgeText: { fontSize: 10, fontWeight: '600', color: T.primary },
-  del: { paddingLeft: 10, paddingTop: 3 },
+  // Row
+  row: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 18, paddingVertical: 15 },
+  rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
 
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: T.textPrimary, marginTop: 16, marginBottom: 6 },
-  emptyBody: { fontSize: 15, color: T.textSecondary, marginBottom: 28 },
-  emptyHints: { alignItems: 'center', gap: 10 },
-  emptyHint: { fontSize: 14, color: T.primary, fontWeight: '500' },
+  // Circle
+  circle: { width: 28, height: 28, borderRadius: 14, borderWidth: 2.5, borderColor: C.primary, justifyContent: 'center', alignItems: 'center', marginRight: 14, marginTop: 1 },
+  circleDone: { borderColor: '#34C759', backgroundColor: '#34C759' },
 
-  fab: { position: 'absolute', right: 20, bottom: 36, width: 56, height: 56, borderRadius: 28, backgroundColor: T.primary, justifyContent: 'center', alignItems: 'center', shadowColor: T.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  // Body
+  body: { flex: 1, paddingRight: 4 },
+  bodyText: { fontSize: 16, lineHeight: 23, color: C.text, fontWeight: '600' },
+  bodyDone: { color: C.faint, textDecorationLine: 'line-through' },
+  meta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 10 },
+
+  // Chip
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  chipTxt: { fontSize: 12, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', alignItems: 'center' },
+  metaTxt: { fontSize: 12, color: C.sub, fontWeight: '500' },
+  repeat: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.primary + '12', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  repeatTxt: { fontSize: 11, fontWeight: '600', color: C.primary },
+
+  delBtn: { paddingLeft: 10, paddingTop: 3 },
+
+  // Empty
+  empty: { alignItems: 'center', paddingTop: 64 },
+  emptyTitle: { fontSize: 21, fontWeight: '800', color: C.text, marginTop: 18, marginBottom: 6 },
+  emptySub: { fontSize: 15, color: C.sub, marginBottom: 32 },
+  emptyHints: { alignItems: 'center', gap: 12 },
+  emptyHint: { fontSize: 15, color: C.primary, fontWeight: '600' },
+
+  // FAB
+  fab: { position: 'absolute', right: 20, bottom: 40, width: 58, height: 58, borderRadius: 29, backgroundColor: C.primary, justifyContent: 'center', alignItems: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 8 },
 });
