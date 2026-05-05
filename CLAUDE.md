@@ -7,43 +7,52 @@
 一款极简、无负担的每日任务管理工具，帮助用户管理日常习惯和待办事项。
 设计理念: "减法设计" —— 让用户少思考、少操作、多完成。
 
-## 技术栈 (计划)
+## 关键技术约束
 
-- React Native + Expo
+**最终产品是 APK/IPA（移动端 APP），不是 Web 应用。**
+
+但为了全面使用 gstack 的自动化测试能力，项目技术选型必须满足：**同一套代码可以在浏览器中运行**，作为 gstack QA 的测试面。
+
+gstack QA 工具体系（全部需要在浏览器中运行）：
+- `/browse` — headless browser，快速自动化交互和验证（~100ms/命令）
+- `/connect-chrome` — 可视化浏览器，可实时观察每一步操作，用于调试
+- `/qa` — 自动化测试+修bug（headless）
+- `/qa-only` — 仅报告不修（headless）
+- `/canary` — 部署后监控（headless）
+- `/design-review` — 视觉审查（可视化浏览器截图对比）
+
+**方案：React Native + Expo + expo-web**
+
+同一套 React Native 代码，三种运行模式：
+
+| 模式 | 命令 | 用途 |
+|------|------|------|
+| Web 开发模式 | `npm run web` | gstack QA 测试（headless + 可视化浏览器） |
+| iOS 构建 | `npx expo run:ios` | 最终 IPA |
+| Android 构建 | `npx expo run:android` | 最终 APK |
+
+关键原则：
+1. 业务逻辑与平台无关（纯 TypeScript），三个平台共享
+2. UI 组件使用 RN 跨平台组件，在 Web/iOS/Android 均渲染一致
+3. Web 模式**仅用于开发/测试**，不做为部署目标
+4. 平台特定代码（通知、存储等）通过条件编译隔离
+
+## 技术栈
+
+- React Native + Expo SDK + expo-web
 - TypeScript
-- Zustand (状态管理)
-- expo-sqlite (本地存储)
-- Anthropic API (AI 功能)
+- Zustand（状态管理）
+- expo-sqlite（iOS/Android 本地存储）+ AsyncStorage（Web 端 polyfill）
+- Anthropic API（AI 智能解析 + 统计分析）
+- expo-notifications（本地通知，iOS/Android）
 
-## 项目结构 (计划)
+## 功能优先级
 
-```
-tick/
-├── app/                  # Expo Router 页面
-│   ├── index.tsx         # 首页 (今日任务)
-│   ├── add.tsx           # 添加任务
-│   ├── edit/[id].tsx     # 编辑任务
-│   └── stats.tsx         # 统计页面
-├── components/           # 可复用组件
-├── stores/               # Zustand stores
-├── db/                   # 数据库层
-├── services/             # AI API 等服务
-└── types/                # TypeScript 类型定义
-```
+详见 `docs/plan.md`。
 
-## 核心功能 (P0)
-
-- 今日任务列表 (筛选Tab: 全部/日常/今日其他)
-- 一键状态切换 (待完成↔已完成)
-- 快速编辑 (长按: 分类/期限)
-- 滑动删除 (确认对话框)
-- AI 智能任务创建 (自然语言解析)
-- 添加/编辑/删除任务
-
-## 重要功能 (P1)
-
-- 统计页面 (昨日/本周/本月完成率)
-- AI 统计分析与个性化建议
+- **P0:** 任务CRUD + AI智能创建 + 每日生成 + 本地提醒
+- **P1:** 统计页面 + AI统计分析
+- **P2:** 图表可视化 + 语音输入 + 数据导出
 
 ## Skill routing
 
