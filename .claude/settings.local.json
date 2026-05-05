@@ -18,7 +18,21 @@
       "Bash(find /tmp -name \"tick-scaffold\" -type d)",
       "Bash(cp app.json App.tsx index.ts tsconfig.json package.json package-lock.json D:/APP/tick/)",
       "Bash(cp -r assets D:/APP/tick/)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npx expo *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse navigate *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse goto *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse screenshot *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse text *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse click *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse reload *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse html *)",
+      "Bash(~/.claude/skills/gstack/browse/dist/browse console *)",
+      "Bash(pkill -f \"expo start\")",
+      "Bash(pkill -f \"metro\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 18468 //F)",
+      "Skill(context-save)"
     ]
   }
 }
